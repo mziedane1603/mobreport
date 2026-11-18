@@ -1,6 +1,29 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><title>تحليل الأصناف</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap">
+<!doctype html>
+<html lang="ar" dir="rtl"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>تحليل الأصناف</title>
+<meta name="theme-color" content="#f3f6f6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d1a1b" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="تحليل الأصناف">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<style>
+@font-face{font-family:'Cairo';font-weight:400;font-display:swap;src:url(fonts/cairo-arabic-400-normal.woff2) format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F,U+2010-2011,U+204F,U+2E41,U+FE80-FEFC}
+@font-face{font-family:'Cairo';font-weight:600;font-display:swap;src:url(fonts/cairo-arabic-600-normal.woff2) format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F,U+2010-2011,U+204F,U+2E41,U+FE80-FEFC}
+@font-face{font-family:'Cairo';font-weight:700;font-display:swap;src:url(fonts/cairo-arabic-700-normal.woff2) format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F,U+2010-2011,U+204F,U+2E41,U+FE80-FEFC}
+@font-face{font-family:'Cairo';font-weight:800;font-display:swap;src:url(fonts/cairo-arabic-800-normal.woff2) format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F,U+2010-2011,U+204F,U+2E41,U+FE80-FEFC}
+@font-face{font-family:'Cairo';font-weight:400;font-display:swap;src:url(fonts/cairo-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215}
+@font-face{font-family:'Cairo';font-weight:700;font-display:swap;src:url(fonts/cairo-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215}
+html{-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;min-height:100vh}
+</style>
+</head><body>
 <style>
 /* Layout: sticky toolbar on top, tabbed workspace below (overview / items / companies / alerts), detail drawer on row click */
 :root{
@@ -149,6 +172,7 @@ tbody tr:hover{background:var(--accent-soft)}
   #drawer aside{width:100%}
   .alerts{gap:10px}
   #drop{padding:30px 14px}
+  input,select{font-size:16px}
 }
 @media print{
   body>*:not(#printRoot){display:none!important}
@@ -236,8 +260,8 @@ tbody tr:hover{background:var(--accent-soft)}
 <div id="toast" role="status"></div>
 <div id="printRoot"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/chart.umd.js"></script>
 <script>
 (function(){
 'use strict';
@@ -267,6 +291,14 @@ async function saveFile(name,data){
       if(dl){await dl.save({filename:name,data});toast('تم تجهيز الملف: '+name);return}
     }
   }catch(e){if(e&&e.code==='declined')return}
+  // موبايل/آيفون: قايمة المشاركة (حفظ في الملفات أو إرسال)
+  if(matchMedia('(pointer:coarse)').matches&&navigator.canShare){
+    try{
+      const ext=name.split('.').pop(),mt={xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',csv:'text/csv',html:'text/html'}[ext]||'application/octet-stream';
+      const f=new File([data instanceof Blob?data:new Blob([data],{type:mt})],name,{type:mt});
+      if(navigator.canShare({files:[f]})){await navigator.share({files:[f]});return}
+    }catch(e){if(e&&e.name==='AbortError')return}
+  }
   const blob=data instanceof Blob?data:new Blob([data]);
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast('تم التحميل: '+name);
@@ -671,6 +703,18 @@ document.onkeydown=e=>{if(e.key==='Escape'){$('#drawer').classList.remove('open'
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(rows.length)setTimeout(refreshAll,50)});
 window.__loadForTest=loadWorkbook;
 initFirebase();
+/* ---------- تطبيق على الشاشة الرئيسية ---------- */
+if('serviceWorker' in navigator&&!window.claude&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
+(function(){try{
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent),sa=navigator.standalone||matchMedia('(display-mode: standalone)').matches;
+  if(window.claude||!ios||sa||localStorage.getItem('installHint'))return;
+  const d=document.createElement('div');d.id='installHint';
+  d.style.cssText='position:fixed;inset:auto 12px calc(12px + env(safe-area-inset-bottom,0px)) 12px;background:var(--ink);color:var(--bg);padding:12px 14px;border-radius:12px;z-index:80;display:flex;gap:10px;align-items:center;font-size:.88rem';
+  d.innerHTML='<span style="flex:1">لتثبيته كتطبيق: اضغط زر المشاركة في Safari ثم "إضافة إلى الشاشة الرئيسية".</span><button class="btn" style="padding:4px 14px;background:transparent;color:inherit;border-color:currentColor">تمام</button>';
+  d.querySelector('button').onclick=()=>{d.remove();try{localStorage.setItem('installHint','1')}catch(e){}};
+  document.body.appendChild(d);
+}catch(e){}})();
 })();
 </script>
+
 </body></html>
