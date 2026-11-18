@@ -1,13 +1,12 @@
 {
- "name": "تحليل الأصناف",
- "short_name": "الأصناف",
+ "name": "Zain - تحليل الأصناف",
+ "short_name": "Zain",
  "description": "تحليل أصناف المخزون والمبيعات",
  "lang": "ar",
  "dir": "rtl",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",
- "orientation": "any",
  "background_color": "#f3f6f6",
  "theme_color": "#0b6e6e",
  "icons": [
