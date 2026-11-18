@@ -1,8 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // الشيتات المحفوظة: القراءة للجميع بدون تسجيل دخول، والحفظ والحذف للمسؤول المسجل دخول فقط
+    // الشيتات المحفوظة والملاحظات: القراءة للجميع بدون تسجيل دخول، والكتابة للمسؤول المسجل دخول فقط
     match /datasets/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /notes/{noteId} {
       allow read: if true;
       allow write: if request.auth != null;
     }

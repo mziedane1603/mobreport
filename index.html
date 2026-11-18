@@ -161,7 +161,7 @@ tbody tr:hover{background:var(--accent-soft)}
   nav.tabs button{padding:10px 12px}
   .settings{gap:8px 14px;padding:10px}
   .settings strong{width:100%}
-  .settings label{flex:1 1 28%;flex-direction:column;align-items:stretch;gap:4px;font-size:.78rem}
+  .settings label{flex:1 1 42%;flex-direction:column;align-items:stretch;gap:4px;font-size:.78rem}
   .settings input{width:100%}
   .settings .sub{width:100%}
   .kpis{grid-template-columns:1fr 1fr;gap:8px}
@@ -176,8 +176,29 @@ tbody tr:hover{background:var(--accent-soft)}
   #drawer aside{width:100%}
   .alerts{gap:10px}
   #drop{padding:30px 14px}
-  input,select{font-size:16px}
+  input,select,textarea{font-size:16px}
 }
+
+.urgent{border:1px solid var(--bad);background:var(--bad-bg);border-radius:10px;padding:14px;margin-bottom:16px}
+.uhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.uhead h3{margin:0;font-size:1.05rem;display:flex;gap:8px;align-items:center}
+.urow{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed var(--line);cursor:pointer}
+.urow .pill{flex:none;margin-top:2px}.utxt{min-width:0;overflow-wrap:anywhere}
+.urgent .btn{margin-top:10px}
+.acts{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:12px}
+.act{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.act.is-done{opacity:.85;border-style:dashed}
+.act .ic-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.areason{font-size:.88rem}.asug{background:var(--accent-soft);border-radius:8px;padding:8px 10px;font-size:.86rem}
+.act select,.act textarea,#dNote{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font:inherit}
+.act textarea,#dNote{min-height:64px;resize:vertical}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chipb{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;cursor:pointer;font-weight:700;display:inline-flex;gap:8px;align-items:center}
+.chipb[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.prog{height:8px;background:var(--mute-bg);border-radius:99px;overflow:hidden;margin-top:6px}.prog i{display:block;height:100%;background:var(--good)}
+.warnline{color:var(--warn);font-size:.82rem}.goodline{color:var(--good)}
+details.panel summary{cursor:pointer;font-weight:700}
+#tblOrders tbody tr{cursor:pointer}
 @media print{
   body>*:not(#printRoot){display:none!important}
   body{background:#fff;color:#000;padding:0}
@@ -214,6 +235,7 @@ tbody tr:hover{background:var(--accent-soft)}
     <button role="tab" aria-selected="true" data-tab="overview">نظرة عامة</button>
     <button role="tab" aria-selected="false" data-tab="items">الأصناف</button>
     <button role="tab" aria-selected="false" data-tab="companies">الشركات</button>
+    <button role="tab" aria-selected="false" data-tab="plan">خطة العمل <span class="badge" id="planBadge">0</span></button>
     <button role="tab" aria-selected="false" data-tab="alerts">التنبيهات <span class="badge" id="alertBadge">0</span></button>
   </nav>
 
@@ -222,10 +244,12 @@ tbody tr:hover{background:var(--accent-soft)}
     <label>فترة التحليل (يوم) <input type="number" id="sPeriod" min="1" class="num"></label>
     <label>راكد بعد (يوم بدون بيع) <input type="number" id="sStag" min="1" value="60" class="num"></label>
     <label>تغطية منخفضة أقل من (يوم) <input type="number" id="sCover" min="1" value="15" class="num"></label>
+    <label>تغطية مستهدفة للطلب (يوم) <input type="number" id="sTarget" min="1" value="30" class="num"></label>
     <span class="sub" id="refInfo"></span>
   </div>
 
   <section id="tab-overview">
+    <div class="urgent" id="urgent" hidden></div>
     <div class="kpis" id="kpis"></div>
     <div class="grid2">
       <div class="panel"><h3>حالة الأصناف</h3><div class="chartbox"><canvas id="chStatus"></canvas></div></div>
@@ -255,6 +279,24 @@ tbody tr:hover{background:var(--accent-soft)}
     <div class="panel" style="margin-bottom:14px"><h3>أكبر 15 شركة بالكمية المباعة</h3><div class="chartbox" style="height:340px"><canvas id="chCo"></canvas></div></div>
     <div class="cards" id="cardsCo"></div>
     <div class="tablewrap desk"><table id="tblCo"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section id="tab-plan" hidden>
+    <div class="panel" style="margin-bottom:12px">
+      <div id="planProgress"></div>
+      <div class="chips" id="planKpis" style="margin-top:10px"></div>
+      <div class="note" id="planHelp" style="margin-bottom:0"></div>
+      <div class="sub" id="planSync" style="margin-top:8px"></div>
+    </div>
+    <details class="panel" style="margin-bottom:12px"><summary id="ordersSum">طلبيات مقترحة حسب الشركة</summary><div class="tablewrap" style="margin-top:10px"><table id="tblOrders"></table></div></details>
+    <div class="filters">
+      <input type="search" id="pQ" placeholder="ابحث في الخطة بالاسم أو الكود أو الشركة">
+      <select id="pCo"></select><select id="pType"></select>
+      <select id="pSt"><option value="open">المفتوحة</option><option value="done">تم</option><option value="resolved">اتحلت</option><option value="all">الكل</option></select>
+    </div>
+    <div class="acts" id="planList"></div>
+    <div class="pager"><span id="pPinfo"></span><div><button class="btn" id="ppPrev">السابق</button><button class="btn" id="ppNext">التالي</button></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn" id="btnPlanXlsx">تصدير الخطة Excel</button><button class="btn" id="btnPlanPrint">طباعة الخطة</button></div>
   </section>
 
   <section id="tab-alerts" hidden><div class="alerts" id="alertsBox"></div></section>
@@ -546,7 +588,9 @@ function openDetail(i){
     <div>ترتيبه داخل الشركة</div><div>${cr?cr+' من '+fmt(rows.filter(x=>x.company===r.company&&x.qty>0).length):'-'}</div>
     <div>حصته من الشركة</div><div class="num">${co&&co.qty&&r.qty>0?fmt1(r.qty/co.qty*100)+'%':'-'}</div>
     <div>نسبة الكمية التراكمية</div><div class="num">${r.cum?fmt1(r.cum)+'%':'-'}</div>
-   </div>`;
+   </div>
+   <h3 style="margin:16px 0 6px">ملاحظاتي على الصنف</h3>
+   <textarea id="dNote" data-i="${i}" placeholder="اكتب ملاحظاتك. بتفضل محفوظة بعد تحديث الشيت.">${esc((notes[nkey(r)]||{}).note||'')}</textarea>`;
   $('#drawer').classList.add('open');$('#dclose').focus();
 }
 
@@ -560,6 +604,7 @@ function exportXlsx(){
   add('الأصناف',itemsAOA(rows),[12,40,22,10,9,9,10,11,11,12,12,12,14,6]);
   add('الشركات',[CCOLS.map(c=>c[1]),...companies.sort((a,b)=>b.qty-a.qty).map(c=>[c.name,c.items,c.qty,+c.share.toFixed(2),c.bonus,+c.bpct.toFixed(2),c.bal,c.active,c.low,c.out,c.stag])],[26,12,10,10,10,10,10,12,12,8,8]);
   alertsDef().forEach(a=>{if(a.list.length)add(a.t,itemsAOA(a.list),[12,40,22,10,9,9,10,11,11,12,12,12,14,6])});
+  if(planRows.length)add('خطة العمل',planAOA([...planRows].sort((a,b)=>b.score-a.score)),[8,16,12,40,22,9,10,10,10,9,50,18]);
   add('ملخص',[['البند','القيمة'],['عدد الأصناف',rows.length],['عدد الشركات',companies.length],['إجمالي الكمية',rows.reduce((s,r)=>s+(r.qty>0?r.qty:0),0)],['إجمالي البونص',rows.reduce((s,r)=>s+r.bonus,0)],['إجمالي الرصيد',rows.reduce((s,r)=>s+(r.bal>0?r.bal:0),0)],['تاريخ مرجعي',dstr(ref)],['فترة التحليل (يوم)',+$('#sPeriod').value]],[26,16]);
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
   saveFile('تحليل-الأصناف.xlsx',new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
@@ -592,6 +637,226 @@ function doPrint(){
   $('#printRoot').innerHTML=html;window.print();
 }
 
+/* ---------- خطة العمل والملاحظات ---------- */
+const NK='zain_notes_v1';
+const PRIO={crit:{t:'حرج',c:'p-bad',w:3000},urg:{t:'عاجل',c:'p-warn',w:2000},follow:{t:'متابعة',c:'p-info',w:1000}};
+const ATYPE={negbal:'رصيد بالسالب',out:'نفد وعليه طلب',low:'رصيد قليل',stag:'راكد',ret:'كمية سالبة',bonus:'بونص مرتفع'};
+const ATYPES=Object.keys(ATYPE);
+const ASTAT={todo:'جديد',doing:'جاري',done:'تم'};
+let notes={},dirtyN=new Set(),syncState='local',pushT=null,planRows=[],planOrders={};
+let planView={prio:'',type:'',co:'',st:'open',q:'',page:0,PS:24};
+try{const j=JSON.parse(localStorage.getItem(NK)||'null');if(j){notes=j.notes||{};dirtyN=new Set(j.dirty||[])}}catch(e){}
+const saveLocal=()=>{try{localStorage.setItem(NK,JSON.stringify({notes,dirty:[...dirtyN]}))}catch(e){}};
+const nkey=r=>String(r.code!=null&&String(r.code).trim()!==''?r.code:'n_'+norm(r.name)).trim().replace(/[\/\s#?\[\]]+/g,'_').slice(0,140);
+const impOf=(v,m)=>Math.round(Math.sqrt(Math.max(0,v)/Math.max(1,m))*999);
+
+function touch(k,info,mut){
+  const d=notes[k]||(notes[k]={k,code:info.code==null?'':String(info.code),name:info.name||'',company:info.company||'',note:'',a:{},u:0});
+  mut(d);if(info.name)d.name=info.name;if(info.company)d.company=info.company;
+  d.u=Date.now();dirtyN.add(k);saveLocal();schedulePush();
+}
+function setAct(a,patch){
+  const r=a.r,d=notes[a.k]||{},info=r||{code:d.code,name:d.name,company:d.company};
+  touch(a.k,info,doc=>{
+    const x=doc.a[a.type]||(doc.a[a.type]={s:'todo',n:'',t:0,u:0,snap:null});
+    if(patch.s&&patch.s!==x.s){
+      if(patch.s==='done'){x.t=Date.now();x.snap={bal:r?r.bal:0,cover:r&&r.cover!=null?Math.round(r.cover):null,ref:dstr(ref)}}
+      else if(patch.s==='todo'){x.t=0;x.snap=null}
+    }
+    Object.assign(x,patch);x.u=Date.now();
+  });
+}
+
+/* مزامنة الملاحظات مع Firestore (القراءة للجميع، الكتابة للمسؤول) */
+function schedulePush(){clearTimeout(pushT);pushT=setTimeout(pushNotes,1500);setSync()}
+async function pushNotes(){
+  if(!fb||!fbUser||!dirtyN.size){setSync();return}
+  const keys=[...dirtyN];syncState='busy';setSync();
+  try{
+    for(let i=0;i<keys.length;i+=400){
+      const b=fb.db.batch();
+      keys.slice(i,i+400).forEach(k=>{if(notes[k])b.set(fb.db.collection('notes').doc(k),notes[k])});
+      await b.commit();
+    }
+    keys.forEach(k=>dirtyN.delete(k));saveLocal();syncState='ok';
+  }catch(e){syncState='err';toast(fbErr(e))}
+  setSync();
+}
+async function pullNotes(){
+  if(!fb)return;
+  try{
+    const sn=await fb.db.collection('notes').get();let ch=false;
+    sn.docs.forEach(x=>{const v=x.data(),k=x.id,l=notes[k];
+      if(!l||(v.u||0)>(l.u||0)){notes[k]=Object.assign({k,a:{}},v);dirtyN.delete(k);ch=true}});
+    saveLocal();if(ch&&rows.length)renderPlan();
+    syncState='ok';
+  }catch(e){syncState='err'}
+  setSync();
+}
+function setSync(){
+  const el=$('#planSync');if(!el)return;
+  let t;
+  if(window.claude||!fb)t='الملاحظات محفوظة على جهازك فقط';
+  else if(syncState==='busy')t='بيتم حفظ الملاحظات على السحابة...';
+  else if(syncState==='err')t='تعذرت المزامنة. الملاحظات محفوظة على جهازك وهتتبعت بعدين';
+  else if(!fbUser)t=dirtyN.size?`${fmt(dirtyN.size)} ملاحظة على جهازك لسه ماتبعتتش. سجّل دخول المسؤول من "السحابة" علشان تتحفظ للجميع`:'الملاحظات من السحابة. سجّل دخول المسؤول لو عايز تضيف ملاحظات للجميع';
+  else t=dirtyN.size?'بيتم حفظ الملاحظات على السحابة...':'الملاحظات متزامنة على السحابة';
+  el.textContent=t;
+}
+
+/* قواعد الإجراءات */
+function actionFor(r,type,cx){
+  const tgt=cx.tgt,need=()=>Math.max(0,Math.ceil(r.daily*tgt-Math.max(0,r.bal)));
+  switch(type){
+    case 'negbal':
+      if(r.bal<0)return {prio:'urg',imp:500,reason:`الرصيد بالسالب (${fmt(r.bal)}). غالباً خطأ في الجرد أو الإدخال.`,suggest:'راجع حركة الصنف وصحّح الرصيد قبل أي طلب شراء.'};
+      break;
+    case 'out':
+      if(r.status==='out'){const n=need();
+        return {prio:r.abc==='A'?'crit':(r.abc==='B'?'urg':'follow'),imp:impOf(r.qty,cx.maxQ),order:n,
+          reason:`رصيد صفر وبيتباع بمتوسط ${fmt1(r.daily)} في اليوم${r.dBuy!=null?`، وآخر شراء منذ ${r.dBuy} يوم`:''}.`,
+          suggest:`اطلب حوالي ${fmt(n)} وحدة تغطي ${tgt} يوم.${r.abc==='A'?' من أعلى الأصناف مبيعاً (A).':''}`}}
+      break;
+    case 'low':
+      if(r.status==='low'){const c=r.cover,n=need();
+        return {prio:(c<3&&r.abc==='A')?'crit':((c<7&&(r.abc==='A'||r.abc==='B'))?'urg':'follow'),imp:impOf(r.qty,cx.maxQ),order:n,
+          reason:`الرصيد ${fmt(r.bal)} يكفي ${fmt(c)} يوم فقط (متوسط ${fmt1(r.daily)} في اليوم).`,
+          suggest:`اطلب حوالي ${fmt(n)} وحدة علشان توصل لتغطية ${tgt} يوم.`}}
+      break;
+    case 'stag':
+      if(r.status==='stag'){const recent=r.dBuy!=null&&r.dBuy<=30&&r.bal>0,big=r.bal>=cx.bigStag;
+        return {prio:(recent&&big)?'urg':'follow',imp:impOf(r.bal,cx.maxB),
+          reason:`رصيد ${fmt(r.bal)} ${r.dSale==null?'ومفيش بيع مسجّل':'وآخر بيع منذ '+r.dSale+' يوم'}${recent?`، وآخر شراء منذ ${r.dBuy} يوم`:''}.`,
+          suggest:recent?'اشتريته من فترة قريبة ومش بيتحرك. أوقف الشراء وجهّز عرض أو خصم.':'فكّر في عرض أو خصم للتصريف أو مرتجع للشركة، وماتشتريش منه تاني.'}}
+      break;
+    case 'ret':
+      if(r.status==='ret')return {prio:'follow',imp:impOf(-r.qty,cx.maxQ),reason:`الكمية بالسالب (${fmt(r.qty)}). مرتجعات أكتر من المبيعات.`,suggest:'راجع قيود المرتجعات وتأكد إنها مسجّلة صح.'};
+      break;
+    case 'bonus':
+      if(r.qty>=20&&r.bpct>10)return {prio:'follow',imp:impOf(r.bonus,cx.maxQ),reason:`البونص ${fmt(r.bonus)} (${fmt1(r.bpct)}% من الكمية المباعة).`,suggest:'اتأكد إن البونص متحاسب عليه صح، وفكّر تتفاوض على بونص أعلى مع الشركة.'};
+      break;
+  }
+  return null;
+}
+function buildPlan(){
+  const cx={tgt:+$('#sTarget').value||30,maxQ:1,maxB:1};
+  rows.forEach(r=>{if(r.qty>cx.maxQ)cx.maxQ=r.qty;if(r.bal>cx.maxB)cx.maxB=r.bal});
+  const sb=rows.filter(r=>r.status==='stag').map(r=>r.bal).sort((a,b)=>a-b);
+  cx.bigStag=sb.length?sb[Math.floor(sb.length*0.75)]:Infinity;
+  const out=[],byKey={},active=new Set();
+  rows.forEach(r=>{const k=nkey(r);byKey[k]=r;
+    ATYPES.forEach(t=>{const a=actionFor(r,t,cx);if(a){a.r=r;a.type=t;a.k=k;a.score=PRIO[a.prio].w+a.imp;active.add(k+'|'+t);out.push(a)}})});
+  Object.values(notes).forEach(d=>{Object.entries(d.a||{}).forEach(([t,x])=>{
+    if(!ATYPE[t]||active.has(d.k+'|'+t)||(x.s==='todo'&&!x.n))return;
+    const r=byKey[d.k];
+    out.push({k:d.k,type:t,r:r||null,resolved:true,name:d.name,company:d.company,prio:'follow',imp:0,score:0,
+      reason:r?`الموقف اتحسن: الرصيد دلوقتي ${fmt(r.bal)}${r.cover!=null?` ويكفي ${fmt(r.cover)} يوم`:''}.`:'الصنف مش موجود في الشيت الحالي.'})});});
+  out.forEach(a=>{const x=notes[a.k]&&notes[a.k].a&&notes[a.k].a[a.type];a.stt=a.resolved?'resolved':((x&&x.s)||'todo')});
+  return out;
+}
+const isOpen=a=>a.stt==='todo'||a.stt==='doing';
+
+function renderPlan(){
+  planRows=buildPlan();
+  const open=planRows.filter(isOpen),cnt=p=>open.filter(a=>a.prio===p).length;
+  const done=planRows.filter(a=>a.stt==='done').length,res=planRows.filter(a=>a.stt==='resolved').length;
+  $('#planBadge').textContent=fmt(cnt('crit')+cnt('urg'));
+  const tot=open.length+done,pc=tot?Math.round(done/tot*100):0;
+  $('#planProgress').innerHTML=`<div class="sub">تم تنفيذ <b class="num">${fmt(done)}</b> من <b class="num">${fmt(tot)}</b> إجراء (<span class="num">${pc}%</span>)</div><div class="prog"><i style="width:${pc}%"></i></div>`;
+  const chip=(f,l,n)=>`<button class="chipb" data-f="${f}" aria-pressed="${(f==='done'||f==='resolved')?planView.st===f:(planView.prio===f&&planView.st==='open')}">${l}<span class="pill ${f==='crit'?'p-bad':f==='urg'?'p-warn':f==='follow'?'p-info':f==='done'?'p-good':'p-mute'} num">${fmt(n)}</span></button>`;
+  $('#planKpis').innerHTML=chip('crit','حرج',cnt('crit'))+chip('urg','عاجل',cnt('urg'))+chip('follow','متابعة',cnt('follow'))+chip('done','تم',done)+chip('resolved','اتحلت',res)+`<button class="chipb" data-f="all" aria-pressed="false">الكل</button>`;
+  // طلبيات مقترحة حسب الشركة
+  const og={};open.filter(a=>a.order>0).forEach(a=>{const c=a.r.company,o=og[c]||(og[c]={n:0,u:0,crit:0});o.n++;o.u+=a.order;if(a.prio==='crit')o.crit++});
+  const ol=Object.entries(og).sort((a,b)=>b[1].crit-a[1].crit||b[1].n-a[1].n);
+  planOrders=ol;
+  $('#tblOrders').innerHTML=`<thead><tr><th>الشركة</th><th class="n">أصناف للطلب</th><th class="n">حرج</th><th class="n">إجمالي الكمية المقترحة</th></tr></thead><tbody>${ol.map(([c,o])=>`<tr data-oco="${esc(c)}"><td>${esc(c)}</td><td class="n num">${fmt(o.n)}</td><td class="n num">${fmt(o.crit)}</td><td class="n num">${fmt(o.u)}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--muted)">مفيش طلبيات مقترحة</td></tr>'}</tbody>`;
+  $('#ordersSum').textContent=`طلبيات مقترحة حسب الشركة (${fmt(ol.length)} شركة)`;
+  // مساعد الخطة
+  const top=ol.slice(0,3).map(([c,o])=>`${esc(c)} (${fmt(o.n)} صنف)`).join('، ');
+  $('#planHelp').innerHTML=open.length?`<b>من أين تبدأ؟</b> عندك <span class="num">${fmt(cnt('crit'))}</span> إجراء حرج و<span class="num">${fmt(cnt('urg'))}</span> عاجل. ${top?`أكتر الشركات محتاجة طلب: ${top}. افتح "طلبيات مقترحة" وابدأ بأول شركة، وبعدها الأصناف الراكدة.`:'مفيش أصناف محتاجة طلب دلوقتي، ركّز على الراكد والمراجعات.'}`:'مفيش إجراءات مفتوحة. الشيت الحالي سليم.';
+  setSync();renderUrgent();renderPlanList();
+}
+function planFiltered(){
+  const q=norm(planView.q),p=planView;
+  return planRows.filter(a=>{
+    if(p.st==='open'&&!isOpen(a))return false;
+    if(p.st==='done'&&a.stt!=='done')return false;
+    if(p.st==='resolved'&&a.stt!=='resolved')return false;
+    if(p.prio&&(a.resolved||a.prio!==p.prio))return false;
+    if(p.type&&a.type!==p.type)return false;
+    const nm=a.r?a.r.name:a.name,co=a.r?a.r.company:a.company,cd=a.r?a.r.code:((notes[a.k]||{}).code||'');
+    if(p.co&&co!==p.co)return false;
+    if(q&&!(norm(nm).includes(q)||String(cd).includes(q)||norm(co).includes(q)))return false;
+    return true}).sort((x,y)=>y.score-x.score);
+}
+function actCard(a){
+  const r=a.r,d=notes[a.k]||{},x=(d.a&&d.a[a.type])||{},stt=a.stt;
+  const name=r?r.name:a.name,co=r?r.company:a.company,code=r?r.code:d.code;
+  let snap='';
+  if(x.s==='done'&&x.snap){
+    const now=r?r.bal:null,was=x.snap.bal;
+    snap=`<div class="sub">وقت التنفيذ (${esc(x.snap.ref)}): رصيد <span class="num">${fmt(was)}</span>${now!=null?`، دلوقتي <span class="num">${fmt(now)}</span>`:''}</div>`;
+    if(!a.resolved)snap+=`<div class="warnline">اتسجّل إنه اتنفذ لكن المشكلة لسه قائمة في الشيت الحالي.</div>`;
+  }
+  return `<div class="act ${stt==='done'?'is-done':''}" data-k="${esc(a.k)}" data-t="${a.type}">
+   <div class="ic-top"><div class="ic-name">${esc(name)}</div>${a.resolved?'<span class="pill p-good">اتحلت</span>':`<span class="pill ${PRIO[a.prio].c}">${PRIO[a.prio].t}</span>`}</div>
+   <div class="sub">${esc(co)} · <span class="num">${esc(code)}</span> · ${ATYPE[a.type]}</div>
+   <div class="areason ${a.resolved?'goodline':''}">${esc(a.reason)}</div>
+   ${a.suggest?`<div class="asug"><b>اقتراح:</b> ${esc(a.suggest)}</div>`:''}
+   ${a.order>0?`<div><span class="pill p-info num">طلب مقترح ${fmt(a.order)} وحدة</span></div>`:''}
+   ${d.note?`<div class="sub">ملاحظتك على الصنف: ${esc(d.note)}</div>`:''}
+   ${snap}
+   <select data-act="st" aria-label="حالة الإجراء">${Object.entries(ASTAT).map(([k,v])=>`<option value="${k}" ${(x.s||'todo')===k?'selected':''}>${v}</option>`).join('')}</select>
+   <textarea data-act="note" placeholder="اكتب اللي عملته أو ملاحظاتك...">${esc(x.n||'')}</textarea>
+   <div class="sub" data-upd>${x.u?'آخر تحديث '+new Date(x.u).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'}):''}</div>
+  </div>`;
+}
+function renderPlanList(){
+  const a=planFiltered(),PS=planView.PS,pages=Math.max(1,Math.ceil(a.length/PS));
+  if(planView.page>=pages)planView.page=pages-1;
+  $('#planList').innerHTML=a.slice(planView.page*PS,(planView.page+1)*PS).map(actCard).join('')||'<div class="sub" style="padding:24px;text-align:center;grid-column:1/-1">مفيش إجراءات مطابقة</div>';
+  $('#pPinfo').textContent=`${fmt(a.length)} إجراء · صفحة ${planView.page+1} من ${pages}`;
+  $('#ppPrev').disabled=planView.page===0;$('#ppNext').disabled=planView.page>=pages-1;
+  $('#pSt').value=planView.st;$('#pType').value=planView.type;$('#pCo').value=planView.co;
+  if($('#pQ').value!==planView.q)$('#pQ').value=planView.q;
+}
+function renderUrgent(){
+  const u=planRows.filter(a=>!a.resolved&&isOpen(a)&&(a.prio==='crit'||a.prio==='urg')).sort((x,y)=>y.score-x.score);
+  const crit=u.filter(a=>a.prio==='crit').length,box=$('#urgent');
+  box.hidden=!u.length;if(!u.length)return;
+  box.innerHTML=`<div class="uhead"><h3>تنبيهات عاجلة <span class="pill p-bad num">${fmt(u.length)}</span></h3><span class="sub"><span class="num">${fmt(crit)}</span> حرج و<span class="num">${fmt(u.length-crit)}</span> عاجل</span></div>
+   ${u.slice(0,6).map(a=>`<div class="urow" data-uk="${esc(a.k)}"><span class="pill ${PRIO[a.prio].c}">${PRIO[a.prio].t}</span><div class="utxt"><b>${esc(a.r.name)}</b><div class="sub">${esc(a.r.company)} · ${ATYPE[a.type]}</div><div class="areason">${esc(a.reason)}</div></div></div>`).join('')}
+   <button class="btn primary" id="urgGo">افتح خطة العمل</button>`;
+}
+function goPlan(p){planView=Object.assign({prio:'',type:'',co:'',st:'open',q:'',page:0,PS:24},p||{});$('#pQ').value=planView.q;renderPlanList();renderPlan();setTab('plan');scrollTo(0,0)}
+function planAOA(list){
+  return [['الأولوية','نوع الإجراء','الكود','الصنف','الشركة','الرصيد','متوسط يومي','تغطية (يوم)','طلب مقترح','الحالة','ملاحظتي','آخر تحديث'],
+   ...list.map(a=>{const r=a.r,d=notes[a.k]||{},x=(d.a&&d.a[a.type])||{};
+     return [a.resolved?'اتحلت':PRIO[a.prio].t,ATYPE[a.type],r?r.code:d.code,r?r.name:a.name,r?r.company:a.company,r?r.bal:'',r&&r.daily?+r.daily.toFixed(2):'',r&&r.cover!=null?+r.cover.toFixed(1):'',a.order||'',a.resolved?'اتحلت':ASTAT[a.stt]||'',((d.note?d.note+' | ':'')+(x.n||'')),x.u?new Date(x.u).toLocaleString('en-GB'):'']})];
+}
+function exportPlan(){
+  const wb=XLSX.utils.book_new();wb.Workbook={Views:[{RTL:true}]};
+  const ws=XLSX.utils.aoa_to_sheet(planAOA(planFiltered()));ws['!cols']=[8,16,12,40,22,9,10,10,10,9,50,18].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws,'خطة العمل');
+  saveFile('خطة-العمل.xlsx',new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+}
+function printDoc(html,fname){
+  if(window.claude&&typeof window.claude.use==='function'){
+    saveFile(fname,'<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تقرير</title><style>@page{size:A4 landscape;margin:10mm}body{margin:12px;font-family:Tahoma,sans-serif}</style></head><body>'+html+'<script>setTimeout(function(){window.print()},600)<\/script></body></html>');
+    toast('افتح الملف المحمّل واطبعه من المتصفح');return;
+  }
+  $('#printRoot').innerHTML=html;window.print();
+}
+function printPlan(){
+  const l=planFiltered().slice(0,3000),th=x=>`<th style="border:1px solid #999;padding:3px 6px;background:#eee;text-align:right">${x}</th>`,td=v=>`<td style="border:1px solid #bbb;padding:2px 6px;vertical-align:top">${esc(v)}</td>`;
+  const A=planAOA(l);
+  printDoc(`<div style="font-family:Cairo,Tahoma,sans-serif;direction:rtl;color:#000"><h1 style="margin:0">Zain — خطة العمل</h1><p style="margin:4px 0 12px">${esc(fileName)} · تاريخ مرجعي ${dstr(ref)} · ${fmt(l.length)} إجراء</p><table style="border-collapse:collapse;width:100%;font-size:11px"><thead><tr>${A[0].map(th).join('')}</tr></thead><tbody>${A.slice(1).map(r=>`<tr>${r.map(td).join('')}</tr>`).join('')}</tbody></table></div>`,'خطة-العمل.html');
+}
+function fillPlanFilters(){
+  $('#pCo').innerHTML='<option value="">كل الشركات</option>'+companies.map(c=>c.name).sort((a,b)=>a.localeCompare(b,'ar')).map(n=>`<option>${esc(n)}</option>`).join('');
+  $('#pType').innerHTML='<option value="">كل الأنواع</option>'+Object.entries(ATYPE).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+}
+
 /* ---------- wiring ---------- */
 function loadWorkbook(buf,name){
   try{
@@ -613,6 +878,7 @@ function ingest(out,name,q,period){
   view={q:'',co:'',st:'',abc:'',sort:'qty',dir:-1,page:0,PS:50};$('#q').value='';$('#fAbc').value='';
   $('#drop').hidden=true;$('#app').hidden=false;$('#actions').hidden=false;
   $('#fileInfo').textContent=`${name} · ${fmt(rows.length)} صنف`;
+  fillPlanFilters();planView={prio:'',type:'',co:'',st:'open',q:'',page:0,PS:24};$('#pQ').value='';
   refreshAll();setTab('overview');
 }
 
@@ -629,7 +895,7 @@ async function initFirebase(){
     await Promise.all([loadScript(FB_BASE+'firebase-auth-compat.js'),loadScript(FB_BASE+'firebase-firestore-compat.js')]);
     firebase.initializeApp(FB_CFG);
     fb={auth:firebase.auth(),db:firebase.firestore()};
-    fb.auth.onAuthStateChanged(u=>{fbUser=u;fbState='ready';if(cloudOpen)renderCloud();if(!cloudList&&!listBusy)loadList(true)});
+    fb.auth.onAuthStateChanged(u=>{fbUser=u;fbState='ready';if(cloudOpen)renderCloud();if(!cloudList&&!listBusy)loadList(true);pullNotes().then(pushNotes)});
   }catch(e){fbState='unavailable';if(cloudOpen)renderCloud()}
 }
 function fbErr(e){const c=(e&&e.code)||'';
@@ -703,10 +969,10 @@ async function cloudDelete(id){
   }catch(e){cloudMsg=fbErr(e)}
   cloudBusy=false;renderCloud();if(!cloudList)loadList();
 }
-function refreshAll(){renderOverview();renderItems();renderCompanies();renderAlerts()}
+function refreshAll(){renderOverview();renderItems();renderCompanies();renderAlerts();renderPlan()}
 function setTab(t){
   $$('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));
-  ['overview','items','companies','alerts'].forEach(x=>$('#tab-'+x).hidden=x!==t);
+  ['overview','items','companies','plan','alerts'].forEach(x=>$('#tab-'+x).hidden=x!==t);
   if(t==='overview'||t==='companies'){Object.values(charts).forEach(c=>c.resize())}
 }
 function readFile(f){if(!f)return;const fr=new FileReader();fr.onload=()=>loadWorkbook(fr.result,f.name);fr.readAsArrayBuffer(f)}
@@ -719,9 +985,30 @@ drop.ondragleave=()=>drop.classList.remove('over');
 drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');readFile(e.dataTransfer.files[0])};
 $('#file').onchange=e=>{readFile(e.target.files[0]);e.target.value=''};
 $('#btnNew').onclick=()=>$('#file').click();
+$('#btnPlanXlsx').onclick=exportPlan;$('#btnPlanPrint').onclick=printPlan;
+$('#pQ').oninput=e=>{planView.q=e.target.value;planView.page=0;renderPlanList()};
+$('#pCo').onchange=e=>{planView.co=e.target.value;planView.page=0;renderPlanList()};
+$('#pType').onchange=e=>{planView.type=e.target.value;planView.page=0;renderPlanList()};
+$('#pSt').onchange=e=>{planView.st=e.target.value;planView.page=0;renderPlan()};
+$('#ppPrev').onclick=()=>{planView.page--;renderPlanList()};$('#ppNext').onclick=()=>{planView.page++;renderPlanList()};
+$('#planKpis').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;const f=b.dataset.f;
+  if(f==='done'||f==='resolved'){planView.st=planView.st===f?'open':f;planView.prio=''}
+  else if(f==='all'){planView.st='all';planView.prio=''}
+  else{planView.prio=(planView.prio===f&&planView.st==='open')?'':f;planView.st='open'}
+  planView.page=0;renderPlan()};
+$('#tblOrders').onclick=e=>{const tr=e.target.closest('tr[data-oco]');if(!tr)return;planView.co=tr.dataset.oco;planView.type='';planView.prio='';planView.st='open';planView.page=0;renderPlan();$('#planList').scrollIntoView({behavior:'smooth'})};
+$('#tab-plan').addEventListener('change',e=>{
+  const el=e.target,card=el.closest('.act');if(!card||!el.dataset.act)return;
+  const a=planRows.find(x=>x.k===card.dataset.k&&x.type===card.dataset.t);if(!a)return;
+  if(el.dataset.act==='st'){setAct(a,{s:el.value});toast('اتحفظت الحالة: '+ASTAT[el.value]);renderPlan()}
+  else{setAct(a,{n:el.value});const u=card.querySelector('[data-upd]');if(u)u.textContent='آخر تحديث '+new Date().toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'});toast('اتحفظت الملاحظة')}
+});
+$('#urgent').onclick=e=>{if(e.target.closest('#urgGo')){goPlan({prio:'',st:'open'});return}const r=e.target.closest('[data-uk]');if(r){const a=planRows.find(x=>x.k===r.dataset.uk);goPlan({q:a?a.r.code!==''&&a.r.code!=null?String(a.r.code):a.r.name:''})}};
+$('#drawer').addEventListener('change',e=>{if(e.target.id!=='dNote')return;const r=rows[+e.target.dataset.i];if(!r)return;
+  touch(nkey(r),r,d=>{d.note=e.target.value});renderPlan();toast('اتحفظت الملاحظة')});
 $('#btnXlsx').onclick=exportXlsx;$('#btnCsv').onclick=exportCsv;$('#btnPrint').onclick=doPrint;
 $('#tabs').onclick=e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.tab)};
-['#sPeriod','#sStag','#sCover'].forEach(s=>$(s).onchange=()=>{analyze();refreshAll()});
+['#sPeriod','#sStag','#sCover','#sTarget'].forEach(s=>$(s).onchange=()=>{analyze();refreshAll()});
 $('#q').oninput=e=>{view.q=e.target.value;view.page=0;renderItems()};
 $('#fCo').onchange=e=>{view.co=e.target.value;view.page=0;renderItems()};
 $('#fSt').onchange=e=>{view.st=e.target.value;view.page=0;renderItems()};
