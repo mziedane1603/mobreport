@@ -1,4 +1,4 @@
-const V='items-v1';
+const V='items-v2';
 const SHELL=['./','index.html','manifest.json','vendor/xlsx.full.min.js','vendor/chart.umd.js','fonts/cairo-arabic-400-normal.woff2','fonts/cairo-arabic-600-normal.woff2','fonts/cairo-arabic-700-normal.woff2','fonts/cairo-arabic-800-normal.woff2','fonts/cairo-latin-400-normal.woff2','fonts/cairo-latin-700-normal.woff2','icons/icon-180.png','icons/icon-192.png','icons/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});

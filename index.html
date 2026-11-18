@@ -152,8 +152,8 @@ tbody tr:hover{background:var(--accent-soft)}
   h1{font-size:1.15rem}
   .logo{width:36px;height:36px}
   .actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .actions .btn,#btnCloud{justify-content:center;padding:10px 8px;font-size:.85rem}
-  #btnCloud{width:100%}
+  .actions .btn,#btnCloud,#btnInstall{justify-content:center;padding:10px 8px;font-size:.85rem}
+  #btnCloud,#btnInstall{width:100%}
   nav.tabs button{padding:10px 12px}
   .settings{gap:8px 14px;padding:10px}
   .settings strong{width:100%}
@@ -187,6 +187,7 @@ tbody tr:hover{background:var(--accent-soft)}
     <div class="logo" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5 3.5 13.5a4.95 4.95 0 0 1 7-7l7 7a4.95 4.95 0 0 1-7 7Z"/><path d="m8.5 8.5 7 7"/></svg></div>
     <div><h1>تحليل الأصناف</h1><div class="sub" id="fileInfo">ارفع شيت الأصناف علشان يبدأ التحليل</div></div>
   </div>
+  <button class="btn primary" id="btnInstall" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M12 8v6m0 0-2.5-2.5M12 14l2.5-2.5"/></svg>ثبّت التطبيق</button>
   <button class="btn" id="btnCloud" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 0 0 4.5 12.5 3.5 3.5 0 0 0 6 19z"/></svg>السحابة</button>
   <div class="actions" id="actions" hidden>
     <button class="btn" id="btnNew"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>شيت جديد</button>
@@ -403,7 +404,7 @@ function renderOverview(){
   $('#dq').innerHTML=`<strong>ملاحظات على البيانات:</strong> ${quality.incomplete?fmt(quality.incomplete)+' صف ناقص بيانات (شركة أو كمية أو رصيد)، ':''}${fmt(quality.neg)} صنف كميته بالسالب (مرتجعات)، ${fmt(quality.dupNames)} اسم صنف متكرر بأكواد مختلفة${quality.missing.length?'، أعمدة مش موجودة: '+quality.missing.join('، '):''}.`;
 }
 function baseOpts(){return{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:css('--ink'),font:{family:'Cairo'}}}}}}
-function mk(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart($('#'+id),cfg)}
+function mk(id,cfg){if(typeof Chart==='undefined'){const c=$('#'+id);if(c&&!c.dataset.warned){c.dataset.warned=1;c.parentNode.innerHTML='<div class="sub" style="padding:20px">مكتبة الرسوم مش متحمّلة. اتأكد من الإنترنت وحدّث الصفحة.</div>'}return}if(charts[id])charts[id].destroy();charts[id]=new Chart($('#'+id),cfg)}
 function doughnut(id,labels,data,colors){
   const o=baseOpts();o.plugins.legend.position='bottom';
   mk(id,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderColor:css('--surface'),borderWidth:2}]},options:o});
@@ -618,6 +619,7 @@ function renderCloud(){
   $('#dbody').innerHTML=h;
 }
 async function loadList(auto){
+  if(!fb)return;
   listBusy=true;
   try{
     const sn=await fb.db.collection('datasets').orderBy('savedAt','desc').limit(30).get();
@@ -703,6 +705,22 @@ document.onkeydown=e=>{if(e.key==='Escape'){$('#drawer').classList.remove('open'
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(rows.length)setTimeout(refreshAll,50)});
 window.__loadForTest=loadWorkbook;
 initFirebase();
+/* ---------- زرار تثبيت التطبيق ---------- */
+let installEv=null;
+const isStandalone=()=>navigator.standalone||matchMedia('(display-mode: standalone)').matches;
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function showInstallBtn(){$('#btnInstall').hidden=!!(window.claude||isStandalone()||!/^https?:$/.test(location.protocol))}
+showInstallBtn();
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEv=e;showInstallBtn()});
+addEventListener('appinstalled',()=>{$('#btnInstall').hidden=true;toast('تم تثبيت التطبيق')});
+$('#btnInstall').onclick=async()=>{
+  if(installEv){installEv.prompt();try{await installEv.userChoice}catch(e){}installEv=null;return}
+  cloudOpen=false;
+  const steps=isIOS?['افتح الصفحة في <b>Safari</b> (مش Chrome).','اضغط زر <b>المشاركة</b> (المربع وبه سهم لأعلى) أسفل الشاشة.','مرر لتحت واختار <b>إضافة إلى الشاشة الرئيسية</b>.','اضغط <b>إضافة</b>. هتلاقي أيقونة التطبيق على الشاشة.']
+   :['افتح قايمة المتصفح (النقط التلاتة).','اختار <b>تثبيت التطبيق</b> أو <b>إضافة إلى الشاشة الرئيسية</b>.','أكّد، وهتلاقي أيقونة التطبيق.'];
+  $('#dbody').innerHTML='<button class="btn" id="dclose">إغلاق</button><h2 style="margin-top:14px">تثبيت التطبيق</h2><div class="sub">يفتح بملء الشاشة وبيشتغل حتى من غير إنترنت.</div><ol style="padding-inline-start:20px;line-height:2;margin-top:14px">'+steps.map(x=>'<li>'+x+'</li>').join('')+'</ol>';
+  $('#drawer').classList.add('open');
+};
 /* ---------- تطبيق على الشاشة الرئيسية ---------- */
 if('serviceWorker' in navigator&&!window.claude&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
 (function(){try{
