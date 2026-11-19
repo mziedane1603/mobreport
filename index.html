@@ -1042,18 +1042,44 @@ initFirebase();
 let installEv=null;
 const isStandalone=()=>navigator.standalone||matchMedia('(display-mode: standalone)').matches;
 const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-function showInstallBtn(){$('#btnInstall').hidden=!!(window.claude||isStandalone()||!/^https?:$/.test(location.protocol))}
+const wasInstalled=()=>{try{return localStorage.getItem('appInstalled')==='1'}catch(e){return false}};
+const markInstalled=()=>{try{localStorage.setItem('appInstalled','1')}catch(e){}};
+if(isStandalone())markInstalled();
+function showInstallBtn(){$('#btnInstall').hidden=!!(window.claude||isStandalone()||!/^https?:$/.test(location.protocol)||(wasInstalled()&&!isIOS&&!installEv))}
 showInstallBtn();
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEv=e;showInstallBtn()});
-addEventListener('appinstalled',()=>{$('#btnInstall').hidden=true;toast('تم تثبيت التطبيق')});
+addEventListener('appinstalled',()=>{markInstalled();$('#btnInstall').hidden=true;toast('تم تثبيت التطبيق')});
 $('#btnInstall').onclick=async()=>{
   if(installEv){installEv.prompt();try{await installEv.userChoice}catch(e){}installEv=null;return}
   cloudOpen=false;
   const steps=isIOS?['افتح الصفحة في <b>Safari</b> (مش Chrome).','اضغط زر <b>المشاركة</b> (المربع وبه سهم لأعلى) أسفل الشاشة.','مرر لتحت واختار <b>إضافة إلى الشاشة الرئيسية</b>.','اضغط <b>إضافة</b>. هتلاقي أيقونة التطبيق على الشاشة.']
    :['افتح قايمة المتصفح (النقط التلاتة).','اختار <b>تثبيت التطبيق</b> أو <b>إضافة إلى الشاشة الرئيسية</b>.','أكّد، وهتلاقي أيقونة التطبيق.'];
-  $('#dbody').innerHTML='<button class="btn" id="dclose">إغلاق</button><h2 style="margin-top:14px">تثبيت التطبيق</h2><div class="sub">يفتح بملء الشاشة وبيشتغل حتى من غير إنترنت.</div><ol style="padding-inline-start:20px;line-height:2;margin-top:14px">'+steps.map(x=>'<li>'+x+'</li>').join('')+'</ol>';
+  $('#dbody').innerHTML='<button class="btn" id="dclose">إغلاق</button><h2 style="margin-top:14px">تثبيت التطبيق</h2><div class="sub">يفتح بملء الشاشة وبيشتغل حتى من غير إنترنت.</div>'+(isIOS?'':'<div class="note">لو التطبيق متثبّت عندك قبل كده، افتحه من أيقونته على الشاشة الرئيسية بدل المتصفح. وللتحديث اضغط "تحديث التطبيق" في آخر الصفحة.</div>')+'<ol style="padding-inline-start:20px;line-height:2;margin-top:14px">'+steps.map(x=>'<li>'+x+'</li>').join('')+'</ol><button class="btn" id="btnDiag" type="button">فحص جاهزية التثبيت</button><div id="diagOut" style="margin-top:12px"></div>';
   $('#drawer').classList.add('open');
 };
+async function diagInstall(){
+  const box=$('#diagOut');box.innerHTML='<div class="sub">بيتم الفحص...</div>';
+  const res=[],add=(good,t,fix)=>res.push({good,t,fix});
+  add(location.protocol==='https:'||location.hostname==='localhost','الصفحة مفتوحة على https','لازم الرابط يبدأ بـ https');
+  let mf=null,murl=null;
+  try{const l=document.querySelector('link[rel=manifest]');murl=new URL(l?l.getAttribute('href'):'manifest.json',location.href).href;
+    const r=await fetch(murl,{cache:'no-store'});if(r.ok)mf=await r.json()}catch(e){}
+  add(!!mf,'ملف manifest.json موجود وسليم','ارفع ملف manifest.json جنب index.html في نفس المكان');
+  if(mf){
+    add(!!(mf.name||mf.short_name),'اسم التطبيق موجود','');
+    add(['standalone','fullscreen','minimal-ui'].includes(mf.display),'العرض standalone','');
+    for(const sz of ['192x192','512x512']){
+      const ic=(mf.icons||[]).find(i=>i.sizes===sz&&i.purpose!=='maskable');let okimg=false;
+      if(ic){try{const u=new URL(ic.src,murl).href;const r=await fetch(u,{cache:'no-store'});okimg=r.ok&&(r.headers.get('content-type')||'').includes('image')}catch(e){}}
+      add(okimg,'أيقونة '+sz+' موجودة','ارفع فولدر icons كامل (فيه icon-192.png وicon-512.png) جنب index.html');
+    }
+  }
+  let reg=null;try{reg=await navigator.serviceWorker.getRegistration()}catch(e){}
+  add(!!reg,'الـ service worker متسجّل','ارفع ملف sw.js جنب index.html وحدّث الصفحة');
+  add(!/FBAN|FBAV|Instagram|WhatsApp|Line\//i.test(navigator.userAgent),'الصفحة مش مفتوحة جوه تطبيق تاني (واتساب/فيسبوك)','افتح الرابط من Chrome مباشرة');
+  box.innerHTML=res.map(x=>`<div style="padding:6px 0;border-bottom:1px dashed var(--line)"><span class="pill ${x.good?'p-good':'p-bad'}">${x.good?'تمام':'ناقص'}</span> ${esc(x.t)}${x.good||!x.fix?'':`<div class="sub">${esc(x.fix)}</div>`}</div>`).join('')+(res.every(x=>x.good)?'<div class="note">كل الشروط متوفرة. لو لسه بيعمل اختصار فقط: امسح الاختصار القديم من الشاشة الرئيسية، وبعدين من Chrome (النقط التلاتة) اختار "تثبيت التطبيق".</div>':'');
+}
+$('#drawer').addEventListener('click',e=>{if(e.target.id==='btnDiag')diagInstall()});
 /* ---------- تطبيق على الشاشة الرئيسية ---------- */
 if('serviceWorker' in navigator&&!window.claude&&/^https?:$/.test(location.protocol)){
   let had=!!navigator.serviceWorker.controller;

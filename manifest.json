@@ -6,7 +6,9 @@
  "dir": "rtl",
  "start_url": "./",
  "scope": "./",
+ "id": "./",
  "display": "standalone",
+ "prefer_related_applications": false,
  "background_color": "#f3f6f6",
  "theme_color": "#0b6e6e",
  "icons": [
